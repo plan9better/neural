@@ -8,7 +8,10 @@ from torchvision import transforms
 
 import cv2
 
-image = cv2.imread("sweater2.webp")
+# device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = "cpu"
+
+image = cv2.imread("target.webp")
 if image is None:
     print("Image not found!")
     exit()
@@ -19,17 +22,14 @@ image_inverted = 255 - image_resized
 image_resized = image_inverted.copy()
 
 
-# Scaling factor for enlarging the preview
-scale_factor = 100  # You can adjust this value to make the image preview bigger
-
-# Resize the image for preview purposes (keeping the original 28x28 image unchanged)
+scale_factor = 10  # You can adjust this value to make the image preview bigger
 image_preview = cv2.resize(image_resized,
                            (image_resized.shape[1] * scale_factor, image_resized.shape[0] * scale_factor))
 
 cv2.imshow("Resized Grayscale Image", image_preview)
 
-model = NeuralNetwork().to("cpu")
-model.load_state_dict(torch.load("model.pth", weights_only=True))
+model = NeuralNetwork().to(device)
+model.load_state_dict(torch.load("model3.pth", weights_only=True, map_location=torch.device('cpu')))
 
 classes = [
     "T-shirt/top",
@@ -51,34 +51,18 @@ training_data = datasets.FashionMNIST(
     transform=ToTensor(),
 )
 
-# Download test data from open datasets.
-# test_data = datasets.FashionMNIST(
-#     root="data",
-#     train=False,
-#     download=True,
-#     transform=ToTensor(),
-# )
-# # model.eval()
-# x, y = test_data[0][0], test_data[0][1]
 transform = transforms.Compose([
     transforms.ToPILImage(),            # Convert to PIL image first
     transforms.Grayscale(num_output_channels=1),  # Ensure it's single-channel grayscale
     transforms.ToTensor(),              # Convert to tensor, and automatically scales it to [0, 1]
 ])
 
-# Apply the transformations
-tensor_image = transform(image_resized)
-
-# Add a batch dimension (make it [1, 1, 28, 28] for a single grayscale image)
-# tensor_image = tensor_image.unsqueeze(0)
+tensor_image = transform(image_resized).unsqueeze(0)
 
 print(tensor_image.size())  # Should print torch.Size([1, 1, 28, 28])
+print(model)
 
-# images = [image_resized]
-
-# print(images, x.shape)
 with torch.no_grad():
-    # x = x.to("cpu")
     pred = model(tensor_image)
     predicted = classes[pred[0].argmax(0)]
     print(f'Predicted: "{predicted}"')
